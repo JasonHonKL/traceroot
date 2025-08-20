@@ -79,14 +79,14 @@ class Agent:
 
     def __init__(self):
         api_key = os.getenv("OPENAI_API_KEY")
+
+        self.local_mode: bool = False if api_key else True
+
         if api_key is None:
             # This means that is using the local mode
             # and user needs to provide the token within
             # the integrate section at first
             api_key = "fake_openai_api_key"
-            self.local_mode = True
-        else:
-            self.local_mode = False
         self.chat_client = AsyncOpenAI(api_key=api_key)
         self.system_prompt = AGENT_SYSTEM_PROMPT
 
@@ -133,11 +133,13 @@ class Agent:
             provider (Provider): The provider to use.
             groq_token (str | None): The Groq API key to use.
         """
-        if not is_github_issue and not is_github_pr:
+        if not (is_github_issue or is_github_pr):
             raise ValueError("Either is_github_issue or is_github_pr must be True.")
+
         if model == ChatModel.AUTO:
             model = ChatModel.GPT_4O
 
+        # shall we rename this github_file_tasks it is very confusing
         if github_file_tasks is not None:
             github_str = "\n".join(
                 [
@@ -154,10 +156,7 @@ class Agent:
             )
 
         # Use local client to avoid race conditions in concurrent calls
-        if openai_token is not None:
-            client = AsyncOpenAI(api_key=openai_token)
-        else:
-            client = self.chat_client
+        client = (AsyncOpenAI(api_key=openai_token) if openai_token else self.chat_client)
 
         # Select only necessary log and span features #########################
         (
@@ -341,11 +340,9 @@ class Agent:
                         ),
                     },
                     {
-                        "role":
-                        "user",
+                        "role": "user",
                         "content":
-                        ("Here is the created issueor "
-                         f"the created PR:{response}"),
+                        (f"Here is the created issueor the created PR:{response}"),
                     },
                 ],
             )
