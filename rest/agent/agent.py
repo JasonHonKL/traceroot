@@ -74,6 +74,8 @@ AGENT_SYSTEM_PROMPT = (
     "the point."
 )
 
+MAX_PREV_RECORD = 10
+
 
 class Agent:
 
@@ -156,7 +158,7 @@ class Agent:
             )
 
         # Use local client to avoid race conditions in concurrent calls
-        client = (AsyncOpenAI(api_key=openai_token) if openai_token else self.chat_client)
+        client = AsyncOpenAI(api_key=openai_token) if openai_token else self.chat_client
 
         # Select only necessary log and span features #########################
         (
@@ -222,7 +224,7 @@ class Agent:
         chat_history = [chat for chat in chat_history if chat["role"] != "github"]
         if chat_history is not None:
             # Only append the last 10 chat history records
-            for record in chat_history[-10:]:
+            for record in chat_history[-MAX_PREV_RECORD:]:
                 # We only need to include the user message
                 # (without the context information) in the
                 # chat history
@@ -488,3 +490,11 @@ class Agent:
                 model=model,
             ),
         )
+
+    async def _insert_record_handler(
+        self,
+        message: dict[str,
+                      Any],
+        context_messages: str
+    ):
+        pass
