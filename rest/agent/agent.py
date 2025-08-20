@@ -11,6 +11,7 @@ except ImportError:
 
 import json
 from copy import deepcopy
+from enum import Enum
 from typing import Any
 
 from groq import AsyncGroq
@@ -75,6 +76,11 @@ AGENT_SYSTEM_PROMPT = (
 )
 
 MAX_PREV_RECORD = 10
+
+
+class ISSUE_TYPE(Enum):
+    GITHUB_ISSUE = 1
+    GITHUB_PR = 2
 
 
 class Agent:
@@ -204,17 +210,19 @@ class Agent:
         context_messages = [
             deepcopy(context_chunks[i]) for i in range(len(context_chunks))
         ]
-        for i, message in enumerate(context_chunks):
+        for i, msg in enumerate(context_chunks):
             if is_github_issue:
-                updated_message = f"""
-                    {message}\nFor now please create an GitHub issue.\n
-                """
+                updated_message = self._context_chunk_msg_handler(
+                    msg,
+                    ISSUE_TYPE.GITHUB_ISSUE
+                )
             elif is_github_pr:
-                updated_message = f"""
-                    {message}\nFor now please create a GitHub PR.\n
-                """
+                updated_message = self._context_chunk_msg_handler(
+                    msg,
+                    ISSUE_TYPE.GITHUB_PR
+                )
             else:
-                updated_message = message
+                updated_message = msg
             context_messages[i] = (
                 f"{updated_message}\n\nHere are my questions: "
                 f"{user_message}\n\n{github_message}"
@@ -491,10 +499,13 @@ class Agent:
             ),
         )
 
-    async def _insert_record_handler(
-        self,
-        message: dict[str,
-                      Any],
-        context_messages: str
-    ):
-        pass
+    def _context_chunk_msg_handler(self, message: str, issue_type: ISSUE_TYPE):
+        if issue_type == ISSUE_TYPE.GITHUB_ISSUE:
+            return f"""
+                {message}\nFor now please create an GitHub issue.\n
+            """
+
+        if issue_type == ISSUE_TYPE.GITHUB_PR:
+            return f"""
+                {message}\nFor now please create a GitHub PR.\n
+            """
